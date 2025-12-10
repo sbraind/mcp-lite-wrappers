@@ -1,0 +1,12 @@
+# Source and config
+src/
+tests/
+tsconfig.json
+vitest*.config.ts
+
+# Coverage
+coverage/
+
+# Dev files
+*.log
+.DS_Store

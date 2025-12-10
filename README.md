@@ -20,15 +20,15 @@ Savings: ~80%
 
 | Package | Wraps | Tools → 1 | Est. Savings |
 |---------|-------|-----------|--------------|
-| `@mcp-lite/supabase-lite` | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
-| `@mcp-lite/linear-lite` | Linear MCP | 23 → 1 | ~12k tokens (planned) |
+| [`supabase-lite-mcp`](https://www.npmjs.com/package/supabase-lite-mcp) | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
+| `linear-lite-mcp` | Linear MCP | 23 → 1 | ~12k tokens (planned) |
 
 ## Installation
 
-### supabase-lite
+### supabase-lite-mcp
 
 ```bash
-npm install @mcp-lite/supabase-lite
+npm install supabase-lite-mcp
 ```
 
 Add to your Claude Code MCP config (`.mcp.json`):
@@ -38,10 +38,10 @@ Add to your Claude Code MCP config (`.mcp.json`):
   "mcpServers": {
     "supabase-lite": {
       "command": "npx",
-      "args": ["@mcp-lite/supabase-lite"],
+      "args": ["supabase-lite-mcp"],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "your-access-token",
-        "SUPABASE_PROJECT_ID": "your-project-id"
+        "SUPABASE_PROJECT_REF": "your-project-ref"
       }
     }
   }

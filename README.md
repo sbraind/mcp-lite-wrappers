@@ -21,7 +21,7 @@ Savings: ~80%
 | Package | Wraps | Tools → 1 | Est. Savings |
 |---------|-------|-----------|--------------|
 | [`supabase-lite-mcp`](https://www.npmjs.com/package/supabase-lite-mcp) | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
-| `linear-lite-mcp` | Linear API | 28 → 1 | ~12k tokens |
+| [`linear-lite-mcp`](https://www.npmjs.com/package/linear-lite-mcp) | [Linear GraphQL API](https://developers.linear.app/docs/graphql/working-with-the-graphql-api) | 28 → 1 | ~12k tokens |
 
 ## Installation
 
@@ -169,7 +169,7 @@ Follows the [superpowers-chrome](https://github.com/obra/superpowers-chrome) pat
 
 1. Single tool with `action` enum parameter
 2. Switch/dispatch based on action
-3. Proxy calls to underlying Supabase Management API
+3. Proxy calls to underlying API (Supabase Management API, Linear GraphQL API)
 
 ```
 packages/
@@ -219,5 +219,6 @@ MIT
 ## References
 
 - [superpowers-chrome](https://github.com/obra/superpowers-chrome) - Pattern reference
-- [supabase-mcp](https://github.com/supabase-community/supabase-mcp) - Original MCP being wrapped
+- [supabase-mcp](https://github.com/supabase-community/supabase-mcp) - Supabase MCP being wrapped
+- [Linear GraphQL API](https://developers.linear.app/docs/graphql/working-with-the-graphql-api) - Linear API documentation
 - [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) - Model Context Protocol SDK

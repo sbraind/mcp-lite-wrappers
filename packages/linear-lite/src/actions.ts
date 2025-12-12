@@ -33,11 +33,11 @@ function error(message: string, code?: string): ToolResult {
 }
 
 async function dispatch(input: ToolInput): Promise<ToolResult> {
-  const config = getConfig();
-  const client = new LinearClient(config.apiKey);
   const { action, payload = {} } = input;
 
   try {
+    const config = getConfig();
+    const client = new LinearClient(config.apiKey);
     // Validate and parse payload for the specific action
     const schema = PayloadSchemas[action as keyof typeof PayloadSchemas];
     const validatedPayload = schema.parse(payload);
@@ -237,6 +237,22 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
         return success(result);
       }
 
+      case Actions.GET_USER_TEAMS: {
+        const p = validatedPayload as { userId?: string };
+        const result = await client.getUserTeams(p.userId);
+        return success(result);
+      }
+
+      case Actions.GET_USER_PROJECTS: {
+        const p = validatedPayload as {
+          userId?: string;
+          includeArchived?: boolean;
+          limit?: number;
+        };
+        const result = await client.getUserProjects(p);
+        return success(result);
+      }
+
       // ==================== Issue Relations ====================
       case Actions.LINK_ISSUES: {
         const p = validatedPayload as {
@@ -282,6 +298,45 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
         const result = await client.getWorkflowStates(p.teamId, {
           includeArchived: p.includeArchived,
         });
+        return success(result);
+      }
+
+      // ==================== Milestones ====================
+      case Actions.GET_MILESTONES: {
+        const p = validatedPayload as {
+          projectId: string;
+          includeArchived?: boolean;
+          limit?: number;
+        };
+        const result = await client.getMilestones(p.projectId, {
+          includeArchived: p.includeArchived,
+          limit: p.limit,
+        });
+        return success(result);
+      }
+
+      case Actions.CREATE_MILESTONE: {
+        const p = validatedPayload as {
+          projectId: string;
+          name: string;
+          description?: string;
+          targetDate?: string;
+          sortOrder?: number;
+        };
+        const result = await client.createMilestone(p);
+        return success(result);
+      }
+
+      case Actions.UPDATE_MILESTONE: {
+        const p = validatedPayload as {
+          milestoneId: string;
+          name?: string;
+          description?: string;
+          targetDate?: string;
+          sortOrder?: number;
+        };
+        const { milestoneId, ...updateInput } = p;
+        const result = await client.updateMilestone(milestoneId, updateInput);
         return success(result);
       }
 

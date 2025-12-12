@@ -1,6 +1,6 @@
 # linear-lite-mcp
 
-Lightweight MCP (Model Context Protocol) wrapper for the Linear API. Consolidates 23+ Linear tools into a single action-based tool, reducing Claude Code context usage by ~12k tokens.
+Lightweight MCP (Model Context Protocol) wrapper for the Linear API. Consolidates 28 Linear tools into a single action-based tool, reducing Claude Code context usage by ~12k tokens.
 
 ## Installation
 
@@ -86,6 +86,8 @@ The tool exposes a single `linear` tool with an `action` parameter. Available ac
 |--------|-------------|
 | `get_viewer` | Get current authenticated user |
 | `get_users` | List all users |
+| `get_user_teams` | Get teams for a user |
+| `get_user_projects` | Get projects for a user |
 
 ### Issue Relations
 | Action | Description |
@@ -103,6 +105,13 @@ The tool exposes a single `linear` tool with an `action` parameter. Available ac
 | Action | Description |
 |--------|-------------|
 | `get_workflow_states` | Get workflow states for a team |
+
+### Milestones
+| Action | Description |
+|--------|-------------|
+| `get_milestones` | Get milestones for a project |
+| `create_milestone` | Create a new milestone |
+| `update_milestone` | Update a milestone |
 
 ## Example Usage
 

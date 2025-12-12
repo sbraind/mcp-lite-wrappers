@@ -615,6 +615,119 @@ export class LinearClient {
     });
   }
 
+  async getUserTeams(userId?: string): Promise<unknown> {
+    if (!userId) {
+      const query = `
+        query ViewerTeams {
+          viewer {
+            teamMemberships {
+              nodes {
+                team {
+                  id
+                  key
+                  name
+                  description
+                }
+              }
+            }
+          }
+        }
+      `;
+      return this.graphql(query);
+    }
+
+    const query = `
+      query UserTeams($id: String!) {
+        user(id: $id) {
+          teamMemberships {
+            nodes {
+              team {
+                id
+                key
+                name
+                description
+              }
+            }
+          }
+        }
+      }
+    `;
+    return this.graphql(query, { id: userId });
+  }
+
+  async getUserProjects(options?: {
+    userId?: string;
+    includeArchived?: boolean;
+    limit?: number;
+  }): Promise<unknown> {
+    if (!options?.userId) {
+      const query = `
+        query ViewerProjects($first: Int, $includeArchived: Boolean) {
+          viewer {
+            assignedIssues(first: 1) {
+              nodes {
+                project {
+                  id
+                  name
+                }
+              }
+            }
+            teamMemberships {
+              nodes {
+                team {
+                  projects(first: $first, includeArchived: $includeArchived) {
+                    nodes {
+                      id
+                      name
+                      description
+                      state
+                      progress
+                      startDate
+                      targetDate
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+      return this.graphql(query, {
+        first: options?.limit || 50,
+        includeArchived: options?.includeArchived || false,
+      });
+    }
+
+    const query = `
+      query UserProjects($id: String!, $first: Int, $includeArchived: Boolean) {
+        user(id: $id) {
+          teamMemberships {
+            nodes {
+              team {
+                projects(first: $first, includeArchived: $includeArchived) {
+                  nodes {
+                    id
+                    name
+                    description
+                    state
+                    progress
+                    startDate
+                    targetDate
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+    return this.graphql(query, {
+      id: options.userId,
+      first: options?.limit || 50,
+      includeArchived: options?.includeArchived || false,
+    });
+  }
+
   // ==================== Issue Relations ====================
 
   async linkIssues(input: {
@@ -734,5 +847,87 @@ export class LinearClient {
       id: teamId,
       includeArchived: options?.includeArchived || false,
     });
+  }
+
+  // ==================== Milestones ====================
+
+  async getMilestones(
+    projectId: string,
+    options?: { includeArchived?: boolean; limit?: number }
+  ): Promise<unknown> {
+    const query = `
+      query ProjectMilestones($id: String!, $first: Int, $includeArchived: Boolean) {
+        project(id: $id) {
+          projectMilestones(first: $first, includeArchived: $includeArchived) {
+            nodes {
+              id
+              name
+              description
+              targetDate
+              sortOrder
+              createdAt
+              updatedAt
+            }
+          }
+        }
+      }
+    `;
+    return this.graphql(query, {
+      id: projectId,
+      first: options?.limit || 50,
+      includeArchived: options?.includeArchived || false,
+    });
+  }
+
+  async createMilestone(input: {
+    projectId: string;
+    name: string;
+    description?: string;
+    targetDate?: string;
+    sortOrder?: number;
+  }): Promise<unknown> {
+    const query = `
+      mutation ProjectMilestoneCreate($input: ProjectMilestoneCreateInput!) {
+        projectMilestoneCreate(input: $input) {
+          success
+          projectMilestone {
+            id
+            name
+            description
+            targetDate
+            sortOrder
+            createdAt
+          }
+        }
+      }
+    `;
+    return this.graphql(query, { input });
+  }
+
+  async updateMilestone(
+    milestoneId: string,
+    input: {
+      name?: string;
+      description?: string;
+      targetDate?: string;
+      sortOrder?: number;
+    }
+  ): Promise<unknown> {
+    const query = `
+      mutation ProjectMilestoneUpdate($id: String!, $input: ProjectMilestoneUpdateInput!) {
+        projectMilestoneUpdate(id: $id, input: $input) {
+          success
+          projectMilestone {
+            id
+            name
+            description
+            targetDate
+            sortOrder
+            updatedAt
+          }
+        }
+      }
+    `;
+    return this.graphql(query, { id: milestoneId, input });
   }
 }

@@ -31,6 +31,8 @@ export const Actions = {
   // User operations
   GET_VIEWER: "get_viewer",
   GET_USERS: "get_users",
+  GET_USER_TEAMS: "get_user_teams",
+  GET_USER_PROJECTS: "get_user_projects",
 
   // Issue relations
   LINK_ISSUES: "link_issues",
@@ -42,6 +44,11 @@ export const Actions = {
 
   // Workflow states
   GET_WORKFLOW_STATES: "get_workflow_states",
+
+  // Milestones (Project Milestones)
+  GET_MILESTONES: "get_milestones",
+  CREATE_MILESTONE: "create_milestone",
+  UPDATE_MILESTONE: "update_milestone",
 } as const;
 
 export type Action = (typeof Actions)[keyof typeof Actions];
@@ -71,6 +78,8 @@ export const ActionSchema = z.enum([
   // Users
   Actions.GET_VIEWER,
   Actions.GET_USERS,
+  Actions.GET_USER_TEAMS,
+  Actions.GET_USER_PROJECTS,
   // Relations
   Actions.LINK_ISSUES,
   Actions.GET_ISSUE_RELATIONS,
@@ -79,6 +88,10 @@ export const ActionSchema = z.enum([
   Actions.GET_ATTACHMENTS,
   // Workflow
   Actions.GET_WORKFLOW_STATES,
+  // Milestones
+  Actions.GET_MILESTONES,
+  Actions.CREATE_MILESTONE,
+  Actions.UPDATE_MILESTONE,
 ]);
 
 // Priority levels: 0=no priority, 1=urgent, 2=high, 3=medium, 4=low
@@ -217,6 +230,16 @@ export const PayloadSchemas = {
     limit: z.number().optional().default(50).describe("Maximum number of users to return"),
   }),
 
+  [Actions.GET_USER_TEAMS]: z.object({
+    userId: z.string().optional().describe("User ID (omit for authenticated user)"),
+  }),
+
+  [Actions.GET_USER_PROJECTS]: z.object({
+    userId: z.string().optional().describe("User ID (omit for authenticated user)"),
+    includeArchived: z.boolean().optional().describe("Include archived projects"),
+    limit: z.number().optional().default(50).describe("Maximum number of projects to return"),
+  }),
+
   // ==================== Issue Relations ====================
   [Actions.LINK_ISSUES]: z.object({
     issueId: z.string().describe("Source issue ID"),
@@ -246,6 +269,29 @@ export const PayloadSchemas = {
     teamId: z.string().describe("Team ID to get workflow states for"),
     includeArchived: z.boolean().optional().describe("Include archived states"),
   }),
+
+  // ==================== Milestones ====================
+  [Actions.GET_MILESTONES]: z.object({
+    projectId: z.string().describe("Project ID to get milestones for"),
+    includeArchived: z.boolean().optional().describe("Include archived milestones"),
+    limit: z.number().optional().default(50).describe("Maximum number of milestones to return"),
+  }),
+
+  [Actions.CREATE_MILESTONE]: z.object({
+    projectId: z.string().describe("Project ID to create milestone in"),
+    name: z.string().describe("Milestone name"),
+    description: z.string().optional().describe("Milestone description"),
+    targetDate: z.string().optional().describe("Target date (ISO 8601 format)"),
+    sortOrder: z.number().optional().describe("Sort order for the milestone"),
+  }),
+
+  [Actions.UPDATE_MILESTONE]: z.object({
+    milestoneId: z.string().describe("Milestone ID to update"),
+    name: z.string().optional().describe("New milestone name"),
+    description: z.string().optional().describe("New milestone description"),
+    targetDate: z.string().optional().describe("New target date (ISO 8601 format)"),
+    sortOrder: z.number().optional().describe("New sort order"),
+  }),
 } as const;
 
 // Infer types from schemas
@@ -267,11 +313,16 @@ export type CreateLabelPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.
 export type UpdateLabelPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.UPDATE_LABEL]>;
 export type GetViewerPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_VIEWER]>;
 export type GetUsersPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_USERS]>;
+export type GetUserTeamsPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_USER_TEAMS]>;
+export type GetUserProjectsPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_USER_PROJECTS]>;
 export type LinkIssuesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.LINK_ISSUES]>;
 export type GetIssueRelationsPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_ISSUE_RELATIONS]>;
 export type AddAttachmentPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.ADD_ATTACHMENT]>;
 export type GetAttachmentsPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_ATTACHMENTS]>;
 export type GetWorkflowStatesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_WORKFLOW_STATES]>;
+export type GetMilestonesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_MILESTONES]>;
+export type CreateMilestonePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.CREATE_MILESTONE]>;
+export type UpdateMilestonePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.UPDATE_MILESTONE]>;
 
 // Tool input schema
 export const ToolInputSchema = z.object({

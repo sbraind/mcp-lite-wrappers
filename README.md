@@ -21,7 +21,7 @@ Savings: ~80%
 | Package | Wraps | Tools → 1 | Est. Savings |
 |---------|-------|-----------|--------------|
 | [`supabase-lite-mcp`](https://www.npmjs.com/package/supabase-lite-mcp) | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
-| `linear-lite-mcp` | Linear MCP | 23 → 1 | ~12k tokens (planned) |
+| `linear-lite-mcp` | Linear API | 28 → 1 | ~12k tokens |
 
 ## Installation
 
@@ -31,12 +31,12 @@ Savings: ~80%
 npm install supabase-lite-mcp
 ```
 
-Add to your Claude Code MCP config (`.mcp.json`):
+Add to your Claude Code MCP config (`~/.claude/settings.json` or project `.mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "supabase-lite": {
+    "supabase": {
       "command": "npx",
       "args": ["supabase-lite-mcp"],
       "env": {
@@ -48,7 +48,33 @@ Add to your Claude Code MCP config (`.mcp.json`):
 }
 ```
 
+### linear-lite-mcp
+
+```bash
+npm install linear-lite-mcp
+```
+
+Add to your Claude Code MCP config:
+
+```json
+{
+  "mcpServers": {
+    "linear": {
+      "command": "npx",
+      "args": ["linear-lite-mcp"],
+      "env": {
+        "LINEAR_API_KEY": "lin_api_xxxxx"
+      }
+    }
+  }
+}
+```
+
+Get your Linear API key from [Linear Settings > API](https://linear.app/settings/api).
+
 ## Usage
+
+### Supabase
 
 All actions go through a single `supabase` tool:
 
@@ -95,6 +121,48 @@ All actions go through a single `supabase` tool:
 **Documentation**
 - `search_docs`
 
+### Linear
+
+All actions go through a single `linear` tool:
+
+```typescript
+// Create an issue
+{ action: "create_issue", payload: { title: "Fix bug", teamId: "TEAM-ID" } }
+
+// Search issues
+{ action: "search_issues", payload: { query: "login bug", limit: 10 } }
+
+// Get user's teams
+{ action: "get_user_teams" }
+```
+
+### Linear Available Actions
+
+**Issues**
+- `create_issue`, `update_issue`, `get_issue`, `search_issues`
+- `get_user_issues`, `get_team_issues`, `get_project_issues`
+
+**Comments**
+- `add_comment`, `get_comments`
+
+**Teams & Projects**
+- `get_teams`, `get_team`, `get_projects`, `get_project`
+
+**Labels**
+- `get_labels`, `create_label`, `update_label`
+
+**Users**
+- `get_viewer`, `get_users`, `get_user_teams`, `get_user_projects`
+
+**Issue Relations**
+- `link_issues`, `get_issue_relations`
+
+**Attachments**
+- `add_attachment`, `get_attachments`
+
+**Workflow & Milestones**
+- `get_workflow_states`, `get_milestones`, `create_milestone`, `update_milestone`
+
 ## Architecture
 
 Follows the [superpowers-chrome](https://github.com/obra/superpowers-chrome) pattern:
@@ -110,9 +178,15 @@ packages/
 │   │   ├── index.ts      # MCP server entry
 │   │   ├── actions.ts    # Action dispatcher
 │   │   ├── types.ts      # Zod schemas
-│   │   └── client/       # Supabase API client
+│   │   └── client/       # API client
 │   └── package.json
-└── linear-lite/          # (planned)
+└── linear-lite/
+    ├── src/
+    │   ├── index.ts      # MCP server entry
+    │   ├── actions.ts    # Action dispatcher
+    │   ├── types.ts      # Zod schemas
+    │   └── client/       # GraphQL client
+    └── package.json
 ```
 
 ## Development

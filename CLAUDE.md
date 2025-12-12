@@ -19,13 +19,14 @@ Reference: https://github.com/obra/superpowers-chrome
 |---------|-------|-----------|--------------|
 | `supabase-lite` | supabase-community/supabase-mcp | 20 → 1 | ~11k tokens |
 | `linear-lite` | Linear MCP | 23 → 1 | ~12k tokens |
+| `chrome-lite` | Chrome DevTools (direct puppeteer) | 26 → 1 | ~14k tokens |
 
 ## Tech Stack
 
 - TypeScript
 - Zod for validation
 - MCP SDK (@modelcontextprotocol/sdk)
-- Zero external dependencies beyond MCP
+- puppeteer-core (for chrome-lite)
 
 ## Structure
 
@@ -37,8 +38,17 @@ packages/
 │   │   ├── actions.ts    # Action dispatcher
 │   │   └── types.ts      # Zod schemas
 │   └── package.json
-└── linear-lite/
-    └── (same structure)
+├── linear-lite/
+│   └── (same structure)
+└── chrome-lite/
+    ├── src/
+    │   ├── index.ts      # MCP server entry
+    │   ├── actions.ts    # Action dispatcher
+    │   ├── types.ts      # Zod schemas
+    │   └── browser/      # Puppeteer wrapper
+    │       ├── manager.ts
+    │       └── client.ts
+    └── package.json
 ```
 
 ## Development
@@ -54,3 +64,5 @@ pnpm test
 - superpowers-chrome (pattern): https://github.com/obra/superpowers-chrome
 - supabase-mcp (to wrap): https://github.com/supabase-community/supabase-mcp
 - MCP SDK: https://github.com/modelcontextprotocol/typescript-sdk
+- Chrome DevTools MCP (reference): https://github.com/ChromeDevTools/chrome-devtools-mcp
+- Puppeteer: https://pptr.dev/

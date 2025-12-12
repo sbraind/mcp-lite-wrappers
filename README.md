@@ -22,6 +22,7 @@ Savings: ~80%
 |---------|-------|-----------|--------------|
 | [`supabase-lite-mcp`](https://www.npmjs.com/package/supabase-lite-mcp) | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
 | [`linear-lite-mcp`](https://www.npmjs.com/package/linear-lite-mcp) | [Linear GraphQL API](https://developers.linear.app/docs/graphql/working-with-the-graphql-api) | 28 → 1 | ~12k tokens |
+| [`chrome-lite-mcp`](https://www.npmjs.com/package/chrome-lite-mcp) | [Chrome DevTools](https://github.com/AEscarcha/chrome-devtools-mcp) | 26 → 1 | ~14k tokens |
 
 ## Installation
 
@@ -71,6 +72,33 @@ Add to your Claude Code MCP config:
 ```
 
 Get your Linear API key from [Linear Settings > API](https://linear.app/settings/api).
+
+### chrome-lite-mcp
+
+```bash
+npm install chrome-lite-mcp
+```
+
+Add to your Claude Code MCP config:
+
+```json
+{
+  "mcpServers": {
+    "chrome": {
+      "command": "npx",
+      "args": ["chrome-lite-mcp"],
+      "env": {
+        "CHROME_PATH": "/path/to/chrome",
+        "CHROME_HEADLESS": "true"
+      }
+    }
+  }
+}
+```
+
+Environment variables (optional):
+- `CHROME_PATH` - Path to Chrome executable (auto-detected if not set)
+- `CHROME_HEADLESS` - Set to "false" for visible browser (default: headless)
 
 ## Usage
 
@@ -163,6 +191,44 @@ All actions go through a single `linear` tool:
 **Workflow & Milestones**
 - `get_workflow_states`, `get_milestones`, `create_milestone`, `update_milestone`
 
+### Chrome
+
+All actions go through a single `chrome` tool:
+
+```typescript
+// Navigate to a URL
+{ action: "navigate_page", payload: { url: "https://example.com" } }
+
+// Click an element
+{ action: "click", payload: { selector: "#submit-btn" } }
+
+// Fill a form field
+{ action: "fill", payload: { selector: "#email", value: "test@example.com" } }
+
+// Take a screenshot
+{ action: "take_screenshot", payload: { fullPage: true } }
+```
+
+### Chrome Available Actions
+
+**Input Automation**
+- `click`, `drag`, `fill`, `fill_form`, `handle_dialog`, `hover`, `press_key`, `upload_file`
+
+**Navigation**
+- `navigate_page`, `new_page`, `list_pages`, `select_page`, `close_page`, `wait_for`
+
+**Emulation**
+- `emulate`, `resize_page`
+
+**Performance**
+- `performance_start_trace`, `performance_stop_trace`, `performance_analyze_insight`
+
+**Network**
+- `get_network_request`, `list_network_requests`
+
+**Debugging**
+- `evaluate_script`, `take_screenshot`, `take_snapshot`, `list_console_messages`, `get_console_message`
+
 ## Architecture
 
 Follows the [superpowers-chrome](https://github.com/obra/superpowers-chrome) pattern:
@@ -180,12 +246,19 @@ packages/
 │   │   ├── types.ts      # Zod schemas
 │   │   └── client/       # API client
 │   └── package.json
-└── linear-lite/
+├── linear-lite/
+│   ├── src/
+│   │   ├── index.ts      # MCP server entry
+│   │   ├── actions.ts    # Action dispatcher
+│   │   ├── types.ts      # Zod schemas
+│   │   └── client/       # GraphQL client
+│   └── package.json
+└── chrome-lite/
     ├── src/
     │   ├── index.ts      # MCP server entry
     │   ├── actions.ts    # Action dispatcher
     │   ├── types.ts      # Zod schemas
-    │   └── client/       # GraphQL client
+    │   └── browser/      # Puppeteer wrapper
     └── package.json
 ```
 
@@ -210,7 +283,7 @@ npm run typecheck
 - TypeScript
 - Zod for validation
 - MCP SDK (@modelcontextprotocol/sdk)
-- Zero external dependencies beyond MCP
+- puppeteer-core (for chrome-lite)
 
 ## License
 
@@ -221,4 +294,6 @@ MIT
 - [superpowers-chrome](https://github.com/obra/superpowers-chrome) - Pattern reference
 - [supabase-mcp](https://github.com/supabase-community/supabase-mcp) - Supabase MCP being wrapped
 - [Linear GraphQL API](https://developers.linear.app/docs/graphql/working-with-the-graphql-api) - Linear API documentation
+- [Chrome DevTools MCP](https://github.com/AEscarcha/chrome-devtools-mcp) - Chrome DevTools reference
+- [Puppeteer](https://pptr.dev/) - Browser automation library
 - [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) - Model Context Protocol SDK

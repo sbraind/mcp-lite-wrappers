@@ -106,6 +106,11 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
         return success(result);
       }
 
+      case Actions.SELECT: {
+        const result = await client.select(validatedPayload as Parameters<typeof client.select>[0]);
+        return success(result);
+      }
+
       // ==================== Navigation ====================
       case Actions.CLOSE_PAGE: {
         const result = await client.closePage(validatedPayload as Parameters<typeof client.closePage>[0]);
@@ -198,6 +203,43 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 
       case Actions.TAKE_SNAPSHOT: {
         const result = await client.takeSnapshot(validatedPayload as Parameters<typeof client.takeSnapshot>[0]);
+        return success(result);
+      }
+
+      case Actions.EXTRACT: {
+        const result = await client.extract(validatedPayload as Parameters<typeof client.extract>[0]);
+        return success(result);
+      }
+
+      case Actions.GET_ATTR: {
+        const result = await client.getAttr(validatedPayload as Parameters<typeof client.getAttr>[0]);
+        return success(result);
+      }
+
+      // ==================== Browser Control ====================
+      case Actions.SHOW_BROWSER: {
+        const result = await client.showBrowser();
+        return success(result);
+      }
+
+      case Actions.HIDE_BROWSER: {
+        const result = await client.hideBrowser();
+        return success(result);
+      }
+
+      case Actions.BROWSER_MODE: {
+        const result = await client.browserMode();
+        return success(result);
+      }
+
+      // ==================== Profiles ====================
+      case Actions.SET_PROFILE: {
+        const result = await client.setProfile(validatedPayload as Parameters<typeof client.setProfile>[0]);
+        return success(result);
+      }
+
+      case Actions.GET_PROFILE: {
+        const result = await client.getProfile();
         return success(result);
       }
 

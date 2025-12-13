@@ -1,7 +1,7 @@
 {
   "name": "chrome-lite-mcp",
-  "version": "0.1.0",
-  "description": "Lightweight MCP wrapper for Chrome DevTools - consolidates 26 tools into 1",
+  "version": "0.2.0",
+  "description": "Lightweight MCP wrapper for Chrome DevTools - consolidates 34 tools into 1",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

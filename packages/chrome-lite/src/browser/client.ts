@@ -1,6 +1,7 @@
 import { Page, KeyInput } from "puppeteer-core";
-import { writeFile, readFile } from "fs/promises";
-import { BrowserManager } from "./manager.js";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { BrowserManager, ProfileInfo } from "./manager.js";
 import type {
   ClickPayload,
   DragPayload,
@@ -27,6 +28,11 @@ import type {
   ListConsoleMessagesPayload,
   TakeScreenshotPayload,
   TakeSnapshotPayload,
+  SelectPayload,
+  ExtractPayload,
+  GetAttrPayload,
+  BrowserModePayload,
+  SetProfilePayload,
 } from "../types.js";
 
 // Known device presets
@@ -52,6 +58,53 @@ const DEVICE_PRESETS: Record<string, { viewport: { width: number; height: number
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   },
 };
+
+// Simple HTML to Markdown converter
+function htmlToMarkdown(html: string): string {
+  return html
+    // Headers
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, "# $1\n\n")
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, "## $1\n\n")
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, "### $1\n\n")
+    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, "#### $1\n\n")
+    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, "##### $1\n\n")
+    .replace(/<h6[^>]*>(.*?)<\/h6>/gi, "###### $1\n\n")
+    // Bold and italic
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**")
+    .replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**")
+    .replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*")
+    .replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*")
+    // Links
+    .replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, "[$2]($1)")
+    // Images
+    .replace(/<img[^>]*src=["']([^"']*)["'][^>]*alt=["']([^"']*)["'][^>]*\/?>/gi, "![$2]($1)")
+    .replace(/<img[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']*)["'][^>]*\/?>/gi, "![$1]($2)")
+    .replace(/<img[^>]*src=["']([^"']*)["'][^>]*\/?>/gi, "![]($1)")
+    // Lists
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, "- $1\n")
+    .replace(/<\/?[ou]l[^>]*>/gi, "\n")
+    // Paragraphs and breaks
+    .replace(/<p[^>]*>(.*?)<\/p>/gi, "$1\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    // Code
+    .replace(/<code[^>]*>(.*?)<\/code>/gi, "`$1`")
+    .replace(/<pre[^>]*>(.*?)<\/pre>/gis, "```\n$1\n```\n")
+    // Blockquote
+    .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, "> $1\n")
+    // Remove remaining tags
+    .replace(/<style[^>]*>.*?<\/style>/gis, "")
+    .replace(/<script[^>]*>.*?<\/script>/gis, "")
+    .replace(/<[^>]+>/g, "")
+    // Clean up entities
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    // Clean up whitespace
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 export class BrowserClient {
   constructor(private manager: BrowserManager) {}
@@ -211,6 +264,51 @@ export class BrowserClient {
     return { uploaded: true, files: payload.filePaths };
   }
 
+  async select(payload: SelectPayload): Promise<{ selected: boolean; value: string }> {
+    const page = await this.manager.getCurrentPage();
+    const element = await this.resolveSelector(page, payload.selector);
+
+    let values: string[] = [];
+
+    if (payload.value !== undefined) {
+      values = await element.select(payload.value);
+    } else if (payload.label !== undefined) {
+      // Select by visible text/label
+      const optionValue = await element.evaluate((el: Element, label: string) => {
+        const select = el as HTMLSelectElement;
+        for (const option of Array.from(select.options)) {
+          if (option.text === label || option.textContent?.trim() === label) {
+            return option.value;
+          }
+        }
+        return null;
+      }, payload.label);
+
+      if (optionValue === null) {
+        throw new Error(`No option found with label: ${payload.label}`);
+      }
+      values = await element.select(optionValue);
+    } else if (payload.index !== undefined) {
+      // Select by index
+      const optionValue = await element.evaluate((el: Element, idx: number) => {
+        const select = el as HTMLSelectElement;
+        if (idx >= 0 && idx < select.options.length) {
+          return select.options[idx].value;
+        }
+        return null;
+      }, payload.index);
+
+      if (optionValue === null) {
+        throw new Error(`No option found at index: ${payload.index}`);
+      }
+      values = await element.select(optionValue);
+    } else {
+      throw new Error("Must provide value, label, or index to select");
+    }
+
+    return { selected: true, value: values[0] || "" };
+  }
+
   // ==================== Navigation ====================
 
   async closePage(payload: ClosePagePayload): Promise<{ closed: boolean; remainingPages: number }> {
@@ -222,7 +320,7 @@ export class BrowserClient {
     return this.manager.listPages();
   }
 
-  async navigatePage(payload: NavigatePagePayload): Promise<{ url: string; status: number | null }> {
+  async navigatePage(payload: NavigatePagePayload): Promise<{ url: string; status: number | null; captured?: { md?: string; html?: string; png?: string } }> {
     const page = await this.manager.getCurrentPage();
     let response;
 
@@ -245,10 +343,47 @@ export class BrowserClient {
         break;
     }
 
-    return {
+    const result: { url: string; status: number | null; captured?: { md?: string; html?: string; png?: string } } = {
       url: page.url(),
       status: response?.status() ?? null,
     };
+
+    // Auto-capture feature (like superpowers-chrome)
+    if (payload.autoCapture) {
+      const outputDir = payload.outputDir || process.cwd();
+      const prefix = payload.outputPrefix || "page";
+      const timestamp = Date.now();
+
+      try {
+        await mkdir(outputDir, { recursive: true });
+
+        // Capture HTML
+        const html = await page.content();
+        const htmlPath = join(outputDir, `${prefix}_${timestamp}.html`);
+        await writeFile(htmlPath, html);
+
+        // Capture Markdown
+        const markdown = htmlToMarkdown(html);
+        const mdPath = join(outputDir, `${prefix}_${timestamp}.md`);
+        await writeFile(mdPath, markdown);
+
+        // Capture PNG screenshot
+        const screenshot = await page.screenshot({ type: "png", fullPage: true });
+        const pngPath = join(outputDir, `${prefix}_${timestamp}.png`);
+        await writeFile(pngPath, screenshot);
+
+        result.captured = {
+          md: mdPath,
+          html: htmlPath,
+          png: pngPath,
+        };
+      } catch (err) {
+        // Auto-capture is best-effort, don't fail navigation if capture fails
+        console.error("Auto-capture failed:", err);
+      }
+    }
+
+    return result;
   }
 
   async newPage(payload: NewPagePayload): Promise<{ index: number; url: string }> {
@@ -585,6 +720,11 @@ export class BrowserClient {
         case "text":
           content = await page.evaluate(() => document.body.innerText);
           break;
+        case "markdown": {
+          const html = await page.content();
+          content = htmlToMarkdown(html);
+          break;
+        }
         case "mhtml": {
           const client = await this.manager.getCDPSession();
           const result = await client.send("Page.captureSnapshot", { format: "mhtml" });
@@ -604,6 +744,74 @@ export class BrowserClient {
     }
 
     return { content, format: payload.format || "html" };
+  }
+
+  // ==================== Extraction ====================
+
+  async extract(payload: ExtractPayload): Promise<{ content: string; format: string }> {
+    const page = await this.manager.getCurrentPage();
+    let html: string;
+
+    if (payload.selector) {
+      const element = await this.resolveSelector(page, payload.selector);
+      html = await element.evaluate((el: Element) => el.outerHTML);
+    } else {
+      html = await page.content();
+    }
+
+    let content: string;
+    switch (payload.format) {
+      case "text":
+        content = htmlToMarkdown(html).replace(/[#*`>\[\]!()-]/g, "").replace(/\n{2,}/g, "\n");
+        break;
+      case "markdown":
+        content = htmlToMarkdown(html);
+        break;
+      case "html":
+      default:
+        content = html;
+        break;
+    }
+
+    return { content, format: payload.format || "text" };
+  }
+
+  async getAttr(payload: GetAttrPayload): Promise<{ attribute: string; value: string | null }> {
+    const page = await this.manager.getCurrentPage();
+    const element = await this.resolveSelector(page, payload.selector);
+
+    const value = await element.evaluate((el: Element, attr: string) => {
+      return el.getAttribute(attr);
+    }, payload.attribute);
+
+    return { attribute: payload.attribute, value };
+  }
+
+  // ==================== Browser Control ====================
+
+  async showBrowser(): Promise<{ mode: "visible" }> {
+    await this.manager.showBrowser();
+    return { mode: "visible" };
+  }
+
+  async hideBrowser(): Promise<{ mode: "headless" }> {
+    await this.manager.hideBrowser();
+    return { mode: "headless" };
+  }
+
+  async browserMode(payload: BrowserModePayload): Promise<{ mode: "headless" | "visible" }> {
+    await this.manager.setBrowserMode(payload.mode);
+    return { mode: payload.mode };
+  }
+
+  // ==================== Profile Management ====================
+
+  async setProfile(payload: SetProfilePayload): Promise<ProfileInfo> {
+    return this.manager.setProfile(payload.name, payload.userDataDir);
+  }
+
+  async getProfile(): Promise<ProfileInfo> {
+    return this.manager.getProfile();
   }
 
   // ==================== Helpers ====================

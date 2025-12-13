@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Action constants organized by category
 export const Actions = {
-  // Input Automation (8)
+  // Input Automation (9)
   CLICK: "click",
   DRAG: "drag",
   FILL: "fill",
@@ -11,6 +11,7 @@ export const Actions = {
   HOVER: "hover",
   PRESS_KEY: "press_key",
   UPLOAD_FILE: "upload_file",
+  SELECT: "select",
 
   // Navigation (6)
   CLOSE_PAGE: "close_page",
@@ -33,12 +34,23 @@ export const Actions = {
   GET_NETWORK_REQUEST: "get_network_request",
   LIST_NETWORK_REQUESTS: "list_network_requests",
 
-  // Debugging (5)
+  // Extraction & Debugging (7)
   EVALUATE_SCRIPT: "evaluate_script",
   GET_CONSOLE_MESSAGE: "get_console_message",
   LIST_CONSOLE_MESSAGES: "list_console_messages",
   TAKE_SCREENSHOT: "take_screenshot",
   TAKE_SNAPSHOT: "take_snapshot",
+  EXTRACT: "extract",
+  GET_ATTR: "get_attr",
+
+  // Browser Control (3)
+  SHOW_BROWSER: "show_browser",
+  HIDE_BROWSER: "hide_browser",
+  BROWSER_MODE: "browser_mode",
+
+  // Profiles (2)
+  SET_PROFILE: "set_profile",
+  GET_PROFILE: "get_profile",
 } as const;
 
 export type Action = (typeof Actions)[keyof typeof Actions];
@@ -53,6 +65,7 @@ export const ActionSchema = z.enum([
   Actions.HOVER,
   Actions.PRESS_KEY,
   Actions.UPLOAD_FILE,
+  Actions.SELECT,
   // Navigation
   Actions.CLOSE_PAGE,
   Actions.LIST_PAGES,
@@ -70,12 +83,21 @@ export const ActionSchema = z.enum([
   // Network
   Actions.GET_NETWORK_REQUEST,
   Actions.LIST_NETWORK_REQUESTS,
-  // Debugging
+  // Extraction & Debugging
   Actions.EVALUATE_SCRIPT,
   Actions.GET_CONSOLE_MESSAGE,
   Actions.LIST_CONSOLE_MESSAGES,
   Actions.TAKE_SCREENSHOT,
   Actions.TAKE_SNAPSHOT,
+  Actions.EXTRACT,
+  Actions.GET_ATTR,
+  // Browser Control
+  Actions.SHOW_BROWSER,
+  Actions.HIDE_BROWSER,
+  Actions.BROWSER_MODE,
+  // Profiles
+  Actions.SET_PROFILE,
+  Actions.GET_PROFILE,
 ]);
 
 // Common schemas
@@ -150,6 +172,14 @@ export const PayloadSchemas = {
     timeout: TimeoutSchema,
   }),
 
+  [Actions.SELECT]: z.object({
+    selector: SelectorSchema.describe("Select element selector"),
+    value: z.string().optional().describe("Option value to select"),
+    label: z.string().optional().describe("Option label/text to select"),
+    index: z.number().optional().describe("Option index to select (0-based)"),
+    timeout: TimeoutSchema,
+  }),
+
   // ==================== Navigation ====================
   [Actions.CLOSE_PAGE]: z.object({
     pageIndex: PageIndexSchema.describe("Index of the page/tab to close (closes current if not specified)"),
@@ -162,6 +192,10 @@ export const PayloadSchemas = {
     type: z.enum(["url", "back", "forward", "reload"]).optional().default("url").describe("Navigation type"),
     waitUntil: z.enum(["load", "domcontentloaded", "networkidle0", "networkidle2"]).optional().default("load").describe("When to consider navigation complete"),
     timeout: TimeoutSchema,
+    // Auto-capture feature (like superpowers-chrome)
+    autoCapture: z.boolean().optional().default(false).describe("Auto-save page content (.md, .html, .png) after navigation"),
+    outputDir: z.string().optional().describe("Directory to save auto-captured files (default: current dir)"),
+    outputPrefix: z.string().optional().describe("Prefix for auto-captured files (default: 'page')"),
   }),
 
   [Actions.NEW_PAGE]: z.object({
@@ -282,10 +316,37 @@ export const PayloadSchemas = {
   }),
 
   [Actions.TAKE_SNAPSHOT]: z.object({
-    format: z.enum(["html", "mhtml", "text"]).optional().default("html").describe("Snapshot format"),
+    format: z.enum(["html", "mhtml", "text", "markdown"]).optional().default("html").describe("Snapshot format"),
     selector: SelectorSchema.optional().describe("Element to snapshot (full page if not specified)"),
     outputPath: z.string().optional().describe("Path to save snapshot (returns content if not specified)"),
   }),
+
+  [Actions.EXTRACT]: z.object({
+    selector: SelectorSchema.optional().describe("Element selector to extract from (full page if not specified)"),
+    format: z.enum(["text", "html", "markdown"]).optional().default("text").describe("Extraction format"),
+  }),
+
+  [Actions.GET_ATTR]: z.object({
+    selector: SelectorSchema.describe("Element selector"),
+    attribute: z.string().describe("Attribute name to get (e.g., 'href', 'src', 'class')"),
+  }),
+
+  // ==================== Browser Control ====================
+  [Actions.SHOW_BROWSER]: z.object({}),
+
+  [Actions.HIDE_BROWSER]: z.object({}),
+
+  [Actions.BROWSER_MODE]: z.object({
+    mode: z.enum(["headless", "visible"]).describe("Browser visibility mode"),
+  }),
+
+  // ==================== Profiles ====================
+  [Actions.SET_PROFILE]: z.object({
+    name: z.string().describe("Profile name to set/create"),
+    userDataDir: z.string().optional().describe("Custom user data directory for the profile"),
+  }),
+
+  [Actions.GET_PROFILE]: z.object({}),
 } as const;
 
 // Infer types from schemas
@@ -315,6 +376,14 @@ export type GetConsoleMessagePayload = z.infer<(typeof PayloadSchemas)[typeof Ac
 export type ListConsoleMessagesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.LIST_CONSOLE_MESSAGES]>;
 export type TakeScreenshotPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.TAKE_SCREENSHOT]>;
 export type TakeSnapshotPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.TAKE_SNAPSHOT]>;
+export type SelectPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.SELECT]>;
+export type ExtractPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.EXTRACT]>;
+export type GetAttrPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_ATTR]>;
+export type ShowBrowserPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.SHOW_BROWSER]>;
+export type HideBrowserPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.HIDE_BROWSER]>;
+export type BrowserModePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.BROWSER_MODE]>;
+export type SetProfilePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.SET_PROFILE]>;
+export type GetProfilePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_PROFILE]>;
 
 // Tool input schema
 export const ToolInputSchema = z.object({

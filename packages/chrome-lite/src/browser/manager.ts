@@ -37,6 +37,14 @@ export interface BrowserConfig {
     deviceScaleFactor?: number;
   };
   args?: string[];
+  userDataDir?: string;
+  profileName?: string;
+}
+
+export interface ProfileInfo {
+  name: string;
+  userDataDir?: string;
+  isActive: boolean;
 }
 
 function findChromePath(): string {
@@ -108,13 +116,27 @@ export class BrowserManager {
   private traceData: string | null = null;
   private isTracing = false;
 
+  // Profile tracking
+  private currentProfile: ProfileInfo = { name: "default", isActive: true };
+
   constructor(config: BrowserConfig = {}) {
     this.config = {
       headless: config.headless ?? true,
       executablePath: config.executablePath ?? process.env.CHROME_PATH,
       defaultViewport: config.defaultViewport ?? { width: 1280, height: 720 },
       args: config.args ?? ["--no-sandbox", "--disable-setuid-sandbox"],
+      userDataDir: config.userDataDir,
+      profileName: config.profileName ?? "default",
     };
+    this.currentProfile = {
+      name: this.config.profileName!,
+      userDataDir: this.config.userDataDir,
+      isActive: false,
+    };
+  }
+
+  isHeadless(): boolean {
+    return this.config.headless ?? true;
   }
 
   async ensureBrowser(): Promise<Browser> {
@@ -126,7 +148,10 @@ export class BrowserManager {
         headless: this.config.headless,
         defaultViewport: this.config.defaultViewport,
         args: this.config.args,
+        userDataDir: this.config.userDataDir,
       });
+
+      this.currentProfile.isActive = true;
 
       // Create initial page
       const pages = await this.browser.pages();
@@ -354,6 +379,53 @@ export class BrowserManager {
       this.pendingDialog = null;
       this.traceData = null;
       this.isTracing = false;
+      this.currentProfile.isActive = false;
     }
+  }
+
+  // ==================== Browser Control ====================
+
+  async setBrowserMode(mode: "headless" | "visible"): Promise<void> {
+    const newHeadless = mode === "headless";
+    if (this.config.headless !== newHeadless) {
+      // Need to restart browser with new mode
+      await this.close();
+      this.config.headless = newHeadless;
+      await this.ensureBrowser();
+    }
+  }
+
+  async showBrowser(): Promise<void> {
+    await this.setBrowserMode("visible");
+  }
+
+  async hideBrowser(): Promise<void> {
+    await this.setBrowserMode("headless");
+  }
+
+  getBrowserMode(): "headless" | "visible" {
+    return this.config.headless ? "headless" : "visible";
+  }
+
+  // ==================== Profile Management ====================
+
+  async setProfile(name: string, userDataDir?: string): Promise<ProfileInfo> {
+    // If profile is different, restart browser with new profile
+    if (this.currentProfile.name !== name || this.currentProfile.userDataDir !== userDataDir) {
+      await this.close();
+      this.config.profileName = name;
+      this.config.userDataDir = userDataDir;
+      this.currentProfile = {
+        name,
+        userDataDir,
+        isActive: false,
+      };
+      await this.ensureBrowser();
+    }
+    return this.currentProfile;
+  }
+
+  getProfile(): ProfileInfo {
+    return { ...this.currentProfile };
   }
 }

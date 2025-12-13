@@ -22,7 +22,7 @@ Savings: ~80%
 |---------|-------|-----------|--------------|
 | [`supabase-lite-mcp`](https://www.npmjs.com/package/supabase-lite-mcp) | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
 | [`linear-lite-mcp`](https://www.npmjs.com/package/linear-lite-mcp) | [Linear GraphQL API](https://developers.linear.app/docs/graphql/working-with-the-graphql-api) | 28 → 1 | ~12k tokens |
-| [`chrome-lite-mcp`](https://www.npmjs.com/package/chrome-lite-mcp) | [Chrome DevTools](https://github.com/AEscarcha/chrome-devtools-mcp) | 26 → 1 | ~14k tokens |
+| [`chrome-lite-mcp`](https://www.npmjs.com/package/chrome-lite-mcp) | [Chrome DevTools](https://github.com/AEscarcha/chrome-devtools-mcp) | 34 → 1 | ~14k tokens |
 
 ## Installation
 
@@ -196,8 +196,8 @@ All actions go through a single `linear` tool:
 All actions go through a single `chrome` tool:
 
 ```typescript
-// Navigate to a URL
-{ action: "navigate_page", payload: { url: "https://example.com" } }
+// Navigate to a URL with auto-capture (saves .md, .html, .png)
+{ action: "navigate_page", payload: { url: "https://example.com", autoCapture: true, outputDir: "./captures" } }
 
 // Click an element
 { action: "click", payload: { selector: "#submit-btn" } }
@@ -205,17 +205,29 @@ All actions go through a single `chrome` tool:
 // Fill a form field
 { action: "fill", payload: { selector: "#email", value: "test@example.com" } }
 
+// Select option from dropdown
+{ action: "select", payload: { selector: "#country", value: "US" } }
+
+// Extract content in different formats
+{ action: "extract", payload: { selector: ".article", format: "markdown" } }
+
 // Take a screenshot
 { action: "take_screenshot", payload: { fullPage: true } }
+
+// Show browser (switch from headless to visible)
+{ action: "show_browser" }
+
+// Set browser profile
+{ action: "set_profile", payload: { name: "work", userDataDir: "~/.chrome-profiles/work" } }
 ```
 
 ### Chrome Available Actions
 
 **Input Automation**
-- `click`, `drag`, `fill`, `fill_form`, `handle_dialog`, `hover`, `press_key`, `upload_file`
+- `click`, `drag`, `fill`, `fill_form`, `handle_dialog`, `hover`, `press_key`, `upload_file`, `select`
 
 **Navigation**
-- `navigate_page`, `new_page`, `list_pages`, `select_page`, `close_page`, `wait_for`
+- `navigate_page` (with auto-capture support), `new_page`, `list_pages`, `select_page`, `close_page`, `wait_for`
 
 **Emulation**
 - `emulate`, `resize_page`
@@ -226,8 +238,14 @@ All actions go through a single `chrome` tool:
 **Network**
 - `get_network_request`, `list_network_requests`
 
-**Debugging**
-- `evaluate_script`, `take_screenshot`, `take_snapshot`, `list_console_messages`, `get_console_message`
+**Extraction & Debugging**
+- `extract` (text/html/markdown), `get_attr`, `evaluate_script`, `take_screenshot`, `take_snapshot`, `list_console_messages`, `get_console_message`
+
+**Browser Control**
+- `show_browser`, `hide_browser`, `browser_mode`
+
+**Profile Management**
+- `set_profile`, `get_profile`
 
 ## Architecture
 

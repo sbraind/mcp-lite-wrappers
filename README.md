@@ -23,6 +23,7 @@ Savings: ~80%
 | [`supabase-lite-mcp`](https://www.npmjs.com/package/supabase-lite-mcp) | [supabase-mcp](https://github.com/supabase-community/supabase-mcp) | 30 → 1 | ~11k tokens |
 | [`linear-lite-mcp`](https://www.npmjs.com/package/linear-lite-mcp) | [Linear GraphQL API](https://developers.linear.app/docs/graphql/working-with-the-graphql-api) | 28 → 1 | ~12k tokens |
 | [`chrome-lite-mcp`](https://www.npmjs.com/package/chrome-lite-mcp) | [Chrome DevTools](https://github.com/AEscarcha/chrome-devtools-mcp) | 34 → 1 | ~14k tokens |
+| [`context7-lite-mcp`](https://www.npmjs.com/package/context7-lite-mcp) | [Context7 MCP](https://github.com/upstash/context7) | 2 → 1 | ~400 tokens |
 
 ## Installation
 
@@ -99,6 +100,31 @@ Add to your Claude Code MCP config:
 Environment variables (optional):
 - `CHROME_PATH` - Path to Chrome executable (auto-detected if not set)
 - `CHROME_HEADLESS` - Set to "false" for visible browser (default: headless)
+
+### context7-lite-mcp
+
+```bash
+npm install context7-lite-mcp
+```
+
+Add to your Claude Code MCP config:
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["context7-lite-mcp"],
+      "env": {
+        "CONTEXT7_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Environment variables (optional):
+- `CONTEXT7_API_KEY` - Context7 API key from [context7.com/dashboard](https://context7.com/dashboard) (optional - lower rate limits without it)
 
 ## Usage
 
@@ -246,6 +272,30 @@ All actions go through a single `chrome` tool:
 
 **Profile Management**
 - `set_profile`, `get_profile`
+
+### Context7
+
+All actions go through a single `context7` tool:
+
+```typescript
+// Resolve library ID
+{ action: "resolve_library_id", payload: { libraryName: "next.js" } }
+
+// Get library docs
+{ action: "get_library_docs", payload: {
+  context7CompatibleLibraryID: "/vercel/next.js",
+  topic: "routing",
+  tokens: 5000
+} }
+```
+
+### Context7 Available Actions
+
+**Library Resolution**
+- `resolve_library_id` - Search for libraries and get Context7-compatible IDs
+
+**Documentation**
+- `get_library_docs` - Fetch up-to-date, version-specific documentation with optional topic filtering
 
 ## Architecture
 

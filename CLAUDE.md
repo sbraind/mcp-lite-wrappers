@@ -20,6 +20,7 @@ Reference: https://github.com/obra/superpowers-chrome
 | `supabase-lite` | supabase-community/supabase-mcp | 20 → 1 | ~11k tokens |
 | `linear-lite` | Linear MCP | 23 → 1 | ~12k tokens |
 | `chrome-lite` | Chrome DevTools (direct puppeteer) | 26 → 1 | ~14k tokens |
+| `context7-lite` | Context7 MCP (upstash/context7) | 2 → 1 | ~400 tokens |
 
 ## Tech Stack
 
@@ -63,6 +64,7 @@ pnpm test
 
 - superpowers-chrome (pattern): https://github.com/obra/superpowers-chrome
 - supabase-mcp (to wrap): https://github.com/supabase-community/supabase-mcp
+- context7 (to wrap): https://github.com/upstash/context7
 - MCP SDK: https://github.com/modelcontextprotocol/typescript-sdk
 - Chrome DevTools MCP (reference): https://github.com/ChromeDevTools/chrome-devtools-mcp
 - Puppeteer: https://pptr.dev/

@@ -68,6 +68,9 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
           title?: string;
           description?: string;
           stateId?: string;
+          stateName?: string;
+          cycleId?: string;
+          cycleName?: string;
           teamId?: string;
           assigneeId?: string;
           priority?: number;
@@ -76,14 +79,69 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
           projectId?: string;
           estimate?: number;
         };
-        const { issueId, ...updateInput } = p;
+        const { issueId, stateName, cycleName, ...updateInput } = p;
+
+        // Get the issue to find its team (needed for state/cycle resolution)
+        let teamId: string | undefined;
+        if (stateName || cycleName) {
+          const issueData = await client.getIssue(issueId) as { issue: { team: { id: string } } };
+          teamId = issueData.issue.team.id;
+        }
+
+        // If stateName is provided, resolve it to stateId
+        if (stateName && !updateInput.stateId && teamId) {
+          const statesData = await client.getWorkflowStates(teamId) as {
+            team: { states: { nodes: Array<{ id: string; name: string }> } }
+          };
+          const states = statesData.team.states.nodes;
+
+          const matchingState = states.find(
+            s => s.name.toLowerCase() === stateName.toLowerCase()
+          );
+
+          if (!matchingState) {
+            const availableStates = states.map(s => s.name).join(", ");
+            return error(
+              `State "${stateName}" not found. Available states: ${availableStates}`,
+              "STATE_NOT_FOUND"
+            );
+          }
+
+          updateInput.stateId = matchingState.id;
+        }
+
+        // If cycleName is provided, resolve it to cycleId
+        if (cycleName && !updateInput.cycleId && teamId) {
+          const cyclesData = await client.getCycles(teamId) as {
+            team: { cycles: { nodes: Array<{ id: string; name: string; number: number }> } }
+          };
+          const cycles = cyclesData.team.cycles.nodes;
+
+          // Try to match by name or number
+          const matchingCycle = cycles.find(
+            c => c.name?.toLowerCase() === cycleName.toLowerCase() ||
+                 c.number?.toString() === cycleName
+          );
+
+          if (!matchingCycle) {
+            const availableCycles = cycles.map(c => c.name || `Cycle ${c.number}`).join(", ");
+            return error(
+              `Cycle "${cycleName}" not found. Available cycles: ${availableCycles}`,
+              "CYCLE_NOT_FOUND"
+            );
+          }
+
+          updateInput.cycleId = matchingCycle.id;
+        }
+
         const result = await client.updateIssue(issueId, updateInput);
         return success(result);
       }
 
       case Actions.GET_ISSUE: {
-        const p = validatedPayload as { issueId: string };
-        const result = await client.getIssue(p.issueId);
+        const p = validatedPayload as { issueId?: string; id?: string };
+        const issueId = p.issueId || p.id!;
+        const result = await client.getIssue(issueId);
         return success(result);
       }
 
@@ -298,6 +356,38 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
         const result = await client.getWorkflowStates(p.teamId, {
           includeArchived: p.includeArchived,
         });
+        return success(result);
+      }
+
+      // ==================== Cycles ====================
+      case Actions.GET_CYCLES: {
+        const p = validatedPayload as {
+          teamId: string;
+          includeArchived?: boolean;
+          limit?: number;
+        };
+        const result = await client.getCycles(p.teamId, {
+          includeArchived: p.includeArchived,
+          limit: p.limit,
+        });
+        return success(result);
+      }
+
+      case Actions.GET_CYCLE: {
+        const p = validatedPayload as { cycleId: string };
+        const result = await client.getCycle(p.cycleId);
+        return success(result);
+      }
+
+      case Actions.CREATE_CYCLE: {
+        const p = validatedPayload as {
+          teamId: string;
+          name?: string;
+          startsAt: string;
+          endsAt: string;
+          description?: string;
+        };
+        const result = await client.createCycle(p);
         return success(result);
       }
 

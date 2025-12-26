@@ -45,6 +45,11 @@ export const Actions = {
   // Workflow states
   GET_WORKFLOW_STATES: "get_workflow_states",
 
+  // Cycles
+  GET_CYCLES: "get_cycles",
+  GET_CYCLE: "get_cycle",
+  CREATE_CYCLE: "create_cycle",
+
   // Milestones (Project Milestones)
   GET_MILESTONES: "get_milestones",
   CREATE_MILESTONE: "create_milestone",
@@ -88,6 +93,10 @@ export const ActionSchema = z.enum([
   Actions.GET_ATTACHMENTS,
   // Workflow
   Actions.GET_WORKFLOW_STATES,
+  // Cycles
+  Actions.GET_CYCLES,
+  Actions.GET_CYCLE,
+  Actions.CREATE_CYCLE,
   // Milestones
   Actions.GET_MILESTONES,
   Actions.CREATE_MILESTONE,
@@ -128,7 +137,10 @@ export const PayloadSchemas = {
     issueId: z.string().describe("Issue ID to update"),
     title: z.string().optional().describe("New issue title"),
     description: z.string().optional().describe("New issue description (markdown supported)"),
-    stateId: z.string().optional().describe("New workflow state ID"),
+    stateId: z.string().optional().describe("New workflow state ID (UUID)"),
+    stateName: z.string().optional().describe("Workflow state name (e.g., 'In Progress', 'Done') - will be resolved to stateId"),
+    cycleId: z.string().optional().describe("Cycle ID to add the issue to (UUID)"),
+    cycleName: z.string().optional().describe("Cycle name (e.g., 'Sprint 1') - will be resolved to cycleId"),
     teamId: z.string().optional().describe("New team ID"),
     assigneeId: z.string().optional().describe("User ID to assign the issue to"),
     priority: PrioritySchema.describe("Priority level (0-4)"),
@@ -139,7 +151,10 @@ export const PayloadSchemas = {
   }),
 
   [Actions.GET_ISSUE]: z.object({
-    issueId: z.string().describe("Issue ID or identifier (e.g., 'TEAM-123')"),
+    issueId: z.string().optional().describe("Issue ID or identifier (e.g., 'TEAM-123')"),
+    id: z.string().optional().describe("Alias for issueId - Issue ID or identifier"),
+  }).refine(data => data.issueId || data.id, {
+    message: "Either 'issueId' or 'id' is required",
   }),
 
   [Actions.SEARCH_ISSUES]: z.object({
@@ -270,6 +285,25 @@ export const PayloadSchemas = {
     includeArchived: z.boolean().optional().describe("Include archived states"),
   }),
 
+  // ==================== Cycles ====================
+  [Actions.GET_CYCLES]: z.object({
+    teamId: z.string().describe("Team ID to get cycles for"),
+    includeArchived: z.boolean().optional().describe("Include archived/completed cycles"),
+    limit: z.number().optional().default(50).describe("Maximum number of cycles to return"),
+  }),
+
+  [Actions.GET_CYCLE]: z.object({
+    cycleId: z.string().describe("Cycle ID"),
+  }),
+
+  [Actions.CREATE_CYCLE]: z.object({
+    teamId: z.string().describe("Team ID to create the cycle for"),
+    name: z.string().optional().describe("Cycle name (optional, Linear auto-generates if not provided)"),
+    startsAt: z.string().describe("Start date (ISO 8601 format, e.g., '2024-01-15')"),
+    endsAt: z.string().describe("End date (ISO 8601 format, e.g., '2024-01-28')"),
+    description: z.string().optional().describe("Cycle description"),
+  }),
+
   // ==================== Milestones ====================
   [Actions.GET_MILESTONES]: z.object({
     projectId: z.string().describe("Project ID to get milestones for"),
@@ -320,6 +354,9 @@ export type GetIssueRelationsPayload = z.infer<(typeof PayloadSchemas)[typeof Ac
 export type AddAttachmentPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.ADD_ATTACHMENT]>;
 export type GetAttachmentsPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_ATTACHMENTS]>;
 export type GetWorkflowStatesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_WORKFLOW_STATES]>;
+export type GetCyclesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_CYCLES]>;
+export type GetCyclePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_CYCLE]>;
+export type CreateCyclePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.CREATE_CYCLE]>;
 export type GetMilestonesPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_MILESTONES]>;
 export type CreateMilestonePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.CREATE_MILESTONE]>;
 export type UpdateMilestonePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.UPDATE_MILESTONE]>;

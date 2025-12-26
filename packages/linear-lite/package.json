@@ -1,12 +1,12 @@
 {
   "name": "linear-lite-mcp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Lightweight MCP wrapper for Linear API - consolidates 23+ tools into 1",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "linear-lite": "dist/index.js"
+    "linear-lite-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",

@@ -9,9 +9,9 @@ describe("Actions", () => {
     expect(Actions.SEARCH_ISSUES).toBe("search_issues");
   });
 
-  it("should have 28 actions defined", () => {
+  it("should have 31 actions defined", () => {
     const actionCount = Object.keys(Actions).length;
-    expect(actionCount).toBe(28);
+    expect(actionCount).toBe(31);
   });
 });
 

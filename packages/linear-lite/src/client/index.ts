@@ -21,7 +21,7 @@ export class LinearClient {
   constructor(apiKey: string) {
     this.headers = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: apiKey,
     };
   }
 
@@ -92,6 +92,7 @@ export class LinearClient {
       title?: string;
       description?: string;
       stateId?: string;
+      cycleId?: string;
       teamId?: string;
       assigneeId?: string;
       priority?: number;
@@ -111,6 +112,7 @@ export class LinearClient {
             title
             url
             state { id name }
+            cycle { id name number }
             team { id key name }
             assignee { id name }
             priority
@@ -137,6 +139,7 @@ export class LinearClient {
           createdAt
           updatedAt
           state { id name color }
+          cycle { id name number startsAt endsAt isActive }
           team { id key name }
           assignee { id name email }
           creator { id name }
@@ -847,6 +850,105 @@ export class LinearClient {
       id: teamId,
       includeArchived: options?.includeArchived || false,
     });
+  }
+
+  // ==================== Cycles ====================
+
+  async getCycles(
+    teamId: string,
+    options?: { includeArchived?: boolean; limit?: number }
+  ): Promise<unknown> {
+    const query = `
+      query TeamCycles($id: String!, $first: Int, $includeArchived: Boolean) {
+        team(id: $id) {
+          cycles(first: $first, includeArchived: $includeArchived) {
+            nodes {
+              id
+              name
+              number
+              startsAt
+              endsAt
+              completedAt
+              progress
+              scopeComplete
+              scopeTotal
+              isActive
+              isNext
+              isPrevious
+              createdAt
+              updatedAt
+            }
+          }
+        }
+      }
+    `;
+    return this.graphql(query, {
+      id: teamId,
+      first: options?.limit || 50,
+      includeArchived: options?.includeArchived || false,
+    });
+  }
+
+  async getCycle(cycleId: string): Promise<unknown> {
+    const query = `
+      query Cycle($id: String!) {
+        cycle(id: $id) {
+          id
+          name
+          number
+          startsAt
+          endsAt
+          completedAt
+          progress
+          scopeComplete
+          scopeTotal
+          isActive
+          isNext
+          isPrevious
+          team { id key name }
+          issues {
+            nodes {
+              id
+              identifier
+              title
+              state { id name }
+              assignee { id name }
+              priority
+            }
+          }
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+    return this.graphql(query, { id: cycleId });
+  }
+
+  async createCycle(input: {
+    teamId: string;
+    name?: string;
+    startsAt: string;
+    endsAt: string;
+    description?: string;
+  }): Promise<unknown> {
+    const query = `
+      mutation CycleCreate($input: CycleCreateInput!) {
+        cycleCreate(input: $input) {
+          success
+          cycle {
+            id
+            name
+            number
+            startsAt
+            endsAt
+            description
+            team { id key name }
+            createdAt
+          }
+        }
+      }
+    `;
+    return this.graphql(query, { input });
   }
 
   // ==================== Milestones ====================

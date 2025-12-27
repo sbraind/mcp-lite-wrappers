@@ -13,6 +13,7 @@ import {
   searchDocs,
   ApiError,
 } from "./client/index.js";
+import { ActionMetadata, TopActions, CategoryOrder } from "./metadata.js";
 
 function getConfig() {
   const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
@@ -314,8 +315,62 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 }
 
 function buildDescription(): string {
-  const actions = Object.values(Actions).join(", ");
-  return `Supabase operations. Actions: ${actions}. Use action parameter to select operation, payload for action-specific parameters.`;
+  // Group actions by category
+  const byCategory: Record<string, string[]> = {};
+
+  for (const [action, meta] of Object.entries(ActionMetadata)) {
+    const cat = meta.category;
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(action);
+  }
+
+  // Build grouped description
+  const lines: string[] = ["Supabase operations.", ""];
+
+  for (const category of CategoryOrder) {
+    const actions = byCategory[category];
+    if (!actions?.length) continue;
+
+    const label = category.charAt(0).toUpperCase() + category.slice(1);
+    lines.push(`${label}: ${actions.join(", ")}`);
+
+    // Add 1 example from the first action of the category
+    const firstAction = actions[0];
+    const meta = ActionMetadata[firstAction];
+    if (meta?.examples?.[0]) {
+      const ex = JSON.stringify({ action: firstAction, payload: meta.examples[0] });
+      lines.push(`  Ex: ${ex}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+function buildPayloadSchema() {
+  // Generic fallback for other actions
+  const fallback = z.record(z.unknown()).describe(
+    "Parameters for other actions - see examples above"
+  );
+
+  // Build explicit schemas for top actions
+  const topSchemas: z.ZodTypeAny[] = TopActions.map((action) => {
+    const baseSchema = PayloadSchemas[action as keyof typeof PayloadSchemas];
+    const meta = ActionMetadata[action];
+    return z.object({
+      ...baseSchema.shape,
+    }).describe(meta?.description || action);
+  });
+
+  // z.union requires at least 2 elements
+  if (topSchemas.length === 0) {
+    return fallback.optional();
+  }
+  if (topSchemas.length === 1) {
+    return z.union([topSchemas[0], fallback]).optional();
+  }
+
+  return z.union([topSchemas[0], topSchemas[1], ...topSchemas.slice(2), fallback]).optional();
 }
 
 export function registerTools(server: McpServer): void {
@@ -324,7 +379,7 @@ export function registerTools(server: McpServer): void {
     buildDescription(),
     {
       action: ActionSchema.describe("Action to perform"),
-      payload: z.record(z.unknown()).optional().describe("Action-specific parameters"),
+      payload: buildPayloadSchema().describe("Action-specific parameters"),
     },
     async (args) => {
       return dispatch(args);

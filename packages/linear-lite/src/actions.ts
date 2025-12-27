@@ -8,6 +8,7 @@ import {
   type ToolInput,
 } from "./types.js";
 import { LinearClient, ApiError } from "./client/index.js";
+import { ActionMetadata, TopActions, CategoryOrder } from "./metadata.js";
 
 function getConfig() {
   const apiKey = process.env.LINEAR_API_KEY;
@@ -32,6 +33,48 @@ function error(message: string, code?: string): ToolResult {
   };
 }
 
+// Helper to resolve team name/key to team ID
+async function resolveTeamId(
+  client: LinearClient,
+  teamId?: string,
+  teamName?: string
+): Promise<{ teamId: string } | { error: ToolResult }> {
+  // If teamId is provided and looks like a UUID, use it directly
+  if (teamId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teamId)) {
+    return { teamId };
+  }
+
+  // If teamId is provided but not a UUID, treat it as a team name/key
+  const nameToResolve = teamName || teamId;
+
+  if (!nameToResolve) {
+    return { error: error("Either 'teamId' (UUID) or 'teamName' is required", "TEAM_REQUIRED") };
+  }
+
+  // Fetch all teams and find matching one
+  const teamsData = await client.getTeams({}) as {
+    teams: { nodes: Array<{ id: string; name: string; key: string }> }
+  };
+  const teams = teamsData.teams.nodes;
+
+  const matchingTeam = teams.find(
+    t => t.name.toLowerCase() === nameToResolve.toLowerCase() ||
+         t.key.toLowerCase() === nameToResolve.toLowerCase()
+  );
+
+  if (!matchingTeam) {
+    const availableTeams = teams.map(t => `${t.name} (${t.key})`).join(", ");
+    return {
+      error: error(
+        `Team "${nameToResolve}" not found. Available teams: ${availableTeams}`,
+        "TEAM_NOT_FOUND"
+      )
+    };
+  }
+
+  return { teamId: matchingTeam.id };
+}
+
 async function dispatch(input: ToolInput): Promise<ToolResult> {
   const { action, payload = {} } = input;
 
@@ -47,7 +90,8 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
       case Actions.CREATE_ISSUE: {
         const p = validatedPayload as {
           title: string;
-          teamId: string;
+          teamId?: string;
+          teamName?: string;
           description?: string;
           priority?: number;
           stateId?: string;
@@ -58,7 +102,13 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
           estimate?: number;
           parentId?: string;
         };
-        const result = await client.createIssue(p);
+
+        // Resolve team name to ID if needed
+        const teamResult = await resolveTeamId(client, p.teamId, p.teamName);
+        if ('error' in teamResult) return teamResult.error;
+
+        const { teamName: _, ...createInput } = p;
+        const result = await client.createIssue({ ...createInput, teamId: teamResult.teamId });
         return success(result);
       }
 
@@ -170,11 +220,17 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 
       case Actions.GET_TEAM_ISSUES: {
         const p = validatedPayload as {
-          teamId: string;
+          teamId?: string;
+          teamName?: string;
           includeArchived?: boolean;
           limit?: number;
         };
-        const result = await client.getTeamIssues(p.teamId, {
+
+        // Resolve team name to ID if needed
+        const teamResult = await resolveTeamId(client, p.teamId, p.teamName);
+        if ('error' in teamResult) return teamResult.error;
+
+        const result = await client.getTeamIssues(teamResult.teamId, {
           includeArchived: p.includeArchived,
           limit: p.limit,
         });
@@ -258,13 +314,20 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 
       case Actions.CREATE_LABEL: {
         const p = validatedPayload as {
-          teamId: string;
+          teamId?: string;
+          teamName?: string;
           name: string;
           color?: string;
           description?: string;
           parentId?: string;
         };
-        const result = await client.createLabel(p);
+
+        // Resolve team name to ID if needed
+        const teamResult = await resolveTeamId(client, p.teamId, p.teamName);
+        if ('error' in teamResult) return teamResult.error;
+
+        const { teamName: _, ...createInput } = p;
+        const result = await client.createLabel({ ...createInput, teamId: teamResult.teamId });
         return success(result);
       }
 
@@ -350,10 +413,16 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
       // ==================== Workflow States ====================
       case Actions.GET_WORKFLOW_STATES: {
         const p = validatedPayload as {
-          teamId: string;
+          teamId?: string;
+          teamName?: string;
           includeArchived?: boolean;
         };
-        const result = await client.getWorkflowStates(p.teamId, {
+
+        // Resolve team name to ID if needed
+        const teamResult = await resolveTeamId(client, p.teamId, p.teamName);
+        if ('error' in teamResult) return teamResult.error;
+
+        const result = await client.getWorkflowStates(teamResult.teamId, {
           includeArchived: p.includeArchived,
         });
         return success(result);
@@ -362,11 +431,17 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
       // ==================== Cycles ====================
       case Actions.GET_CYCLES: {
         const p = validatedPayload as {
-          teamId: string;
+          teamId?: string;
+          teamName?: string;
           includeArchived?: boolean;
           limit?: number;
         };
-        const result = await client.getCycles(p.teamId, {
+
+        // Resolve team name to ID if needed
+        const teamResult = await resolveTeamId(client, p.teamId, p.teamName);
+        if ('error' in teamResult) return teamResult.error;
+
+        const result = await client.getCycles(teamResult.teamId, {
           includeArchived: p.includeArchived,
           limit: p.limit,
         });
@@ -381,13 +456,20 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 
       case Actions.CREATE_CYCLE: {
         const p = validatedPayload as {
-          teamId: string;
+          teamId?: string;
+          teamName?: string;
           name?: string;
           startsAt: string;
           endsAt: string;
           description?: string;
         };
-        const result = await client.createCycle(p);
+
+        // Resolve team name to ID if needed
+        const teamResult = await resolveTeamId(client, p.teamId, p.teamName);
+        if ('error' in teamResult) return teamResult.error;
+
+        const { teamName: _, ...createInput } = p;
+        const result = await client.createCycle({ ...createInput, teamId: teamResult.teamId });
         return success(result);
       }
 
@@ -442,8 +524,64 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 }
 
 function buildDescription(): string {
-  const actions = Object.values(Actions).join(", ");
-  return `Linear operations. Actions: ${actions}. Use action parameter to select operation, payload for action-specific parameters.`;
+  // Group actions by category
+  const byCategory: Record<string, string[]> = {};
+
+  for (const [action, meta] of Object.entries(ActionMetadata)) {
+    const cat = meta.category;
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(action);
+  }
+
+  // Build grouped description
+  const lines: string[] = ["Linear operations.", ""];
+
+  for (const category of CategoryOrder) {
+    const actions = byCategory[category];
+    if (!actions?.length) continue;
+
+    const label = category.charAt(0).toUpperCase() + category.slice(1);
+    lines.push(`${label}: ${actions.join(", ")}`);
+
+    // Add 1 example from the first action of the category
+    const firstAction = actions[0];
+    const meta = ActionMetadata[firstAction];
+    if (meta?.examples?.[0]) {
+      const ex = JSON.stringify({ action: firstAction, payload: meta.examples[0] });
+      lines.push(`  Ex: ${ex}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+function buildPayloadSchema() {
+  // Generic fallback for other actions
+  const fallback = z.record(z.unknown()).describe(
+    "Parameters for other actions - see examples above"
+  );
+
+  // Build explicit schemas for top actions
+  const topSchemas: z.ZodTypeAny[] = TopActions.map((action) => {
+    const baseSchema = PayloadSchemas[action as keyof typeof PayloadSchemas];
+    const meta = ActionMetadata[action];
+    // Handle schemas with refinements - just use shape without the refine
+    const shape = 'shape' in baseSchema ? baseSchema.shape : {};
+    return z.object({
+      ...shape,
+    }).describe(meta?.description || action);
+  });
+
+  // z.union requires at least 2 elements
+  if (topSchemas.length === 0) {
+    return fallback.optional();
+  }
+  if (topSchemas.length === 1) {
+    return z.union([topSchemas[0], fallback]).optional();
+  }
+
+  return z.union([topSchemas[0], topSchemas[1], ...topSchemas.slice(2), fallback]).optional();
 }
 
 export function registerTools(server: McpServer): void {
@@ -452,7 +590,7 @@ export function registerTools(server: McpServer): void {
     buildDescription(),
     {
       action: ActionSchema.describe("Action to perform"),
-      payload: z.record(z.unknown()).optional().describe("Action-specific parameters"),
+      payload: buildPayloadSchema().describe("Action-specific parameters"),
     },
     async (args) => {
       return dispatch(args);

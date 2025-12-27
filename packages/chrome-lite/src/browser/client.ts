@@ -1,7 +1,9 @@
 import { Page, KeyInput } from "puppeteer-core";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readFile, unlink } from "fs/promises";
 import { join } from "path";
+import { tmpdir } from "os";
 import { BrowserManager, ProfileInfo } from "./manager.js";
+import { gifRecorder } from "./gif-recorder.js";
 import type {
   ClickPayload,
   DragPayload,
@@ -33,6 +35,12 @@ import type {
   GetAttrPayload,
   BrowserModePayload,
   SetProfilePayload,
+  GifStartPayload,
+  GifExportPayload,
+  TabsContextPayload,
+  TabsCreatePayload,
+  PlanUpdatePayload,
+  UploadImagePayload,
 } from "../types.js";
 
 // Known device presets
@@ -812,6 +820,175 @@ export class BrowserClient {
 
   async getProfile(): Promise<ProfileInfo> {
     return this.manager.getProfile();
+  }
+
+  // ==================== GIF Recording ====================
+
+  private screenshotStore: Map<string, Buffer> = new Map();
+
+  async gifStart(payload: GifStartPayload): Promise<{ success: boolean; message: string }> {
+    return gifRecorder.start({ captureOnAction: payload.captureOnAction });
+  }
+
+  async gifStop(): Promise<{ success: boolean; frameCount: number }> {
+    return gifRecorder.stop();
+  }
+
+  async gifExport(payload: GifExportPayload): Promise<{ gif?: string; outputPath?: string; frameCount: number }> {
+    const result = await gifRecorder.export(payload.options);
+
+    if (payload.outputPath) {
+      const outputPath = join(payload.outputPath, payload.filename ?? "recording.gif");
+      await mkdir(payload.outputPath, { recursive: true });
+      await writeFile(outputPath, result.gif);
+      return { outputPath, frameCount: result.frameCount };
+    }
+
+    return { gif: result.gif.toString("base64"), frameCount: result.frameCount };
+  }
+
+  async gifClear(): Promise<{ success: boolean }> {
+    return gifRecorder.clear();
+  }
+
+  // Helper to capture frame after actions (called by dispatch)
+  async captureFrameIfRecording(action: string, coordinates?: { x: number; y: number }): Promise<void> {
+    if (!gifRecorder.shouldCaptureOnAction()) return;
+
+    const page = await this.manager.getCurrentPage();
+    const screenshot = await page.screenshot({ type: "png" });
+    await gifRecorder.addFrame(Buffer.from(screenshot), action, coordinates);
+  }
+
+  // ==================== Tab Management ====================
+
+  async tabsContext(payload: TabsContextPayload): Promise<{
+    tabs: Array<{ pageIndex: number; isActive: boolean; url?: string; title?: string }>;
+    activeIndex: number;
+    count: number;
+  }> {
+    const pages = this.manager.listPages();
+    const currentIndex = pages.findIndex((p) => p.isCurrent);
+
+    if (payload.includeMetadata) {
+      return {
+        tabs: pages.map((p) => ({
+          pageIndex: p.index,
+          isActive: p.isCurrent,
+          url: p.url,
+          title: p.title,
+        })),
+        activeIndex: currentIndex,
+        count: pages.length,
+      };
+    }
+
+    return {
+      tabs: pages.map((p) => ({
+        pageIndex: p.index,
+        isActive: p.isCurrent,
+      })),
+      activeIndex: currentIndex,
+      count: pages.length,
+    };
+  }
+
+  async tabsCreate(payload: TabsCreatePayload): Promise<{ pageIndex: number; url: string }> {
+    const { page, index } = await this.manager.newPage(payload.url);
+
+    if (!payload.active) {
+      // Switch back to previous page if not active
+      const currentIndex = index > 0 ? index - 1 : 0;
+      await this.manager.selectPage(currentIndex);
+    }
+
+    return { pageIndex: index, url: page.url() };
+  }
+
+  // ==================== Plan ====================
+
+  async planUpdate(payload: PlanUpdatePayload): Promise<{
+    status: string;
+    plan: { domains: string[]; approach: string[]; createdAt: string };
+    display: string;
+  }> {
+    const plan = {
+      domains: payload.domains,
+      approach: payload.approach,
+      createdAt: new Date().toISOString(),
+    };
+
+    const display = [
+      "## Plan",
+      "",
+      "**Domains:**",
+      ...payload.domains.map((d) => `- ${d}`),
+      "",
+      "**Approach:**",
+      ...payload.approach.map((s, i) => `${i + 1}. ${s}`),
+    ].join("\n");
+
+    return { status: "pending_approval", plan, display };
+  }
+
+  // ==================== Upload Image ====================
+
+  async takeScreenshotWithStore(payload: TakeScreenshotPayload): Promise<{ screenshot: string; format: string; outputPath?: string; screenshotId: string }> {
+    const result = await this.takeScreenshot(payload);
+
+    // Store screenshot for later use
+    const screenshotId = `ss_${Date.now()}`;
+    if (!payload.outputPath && result.screenshot) {
+      this.screenshotStore.set(screenshotId, Buffer.from(result.screenshot, "base64"));
+    }
+
+    return { ...result, screenshotId };
+  }
+
+  async uploadImage(payload: UploadImagePayload): Promise<{ success: boolean; filename: string }> {
+    const page = await this.manager.getCurrentPage();
+    let imageBuffer: Buffer;
+
+    if (payload.source === "screenshot") {
+      if (!payload.screenshotId) {
+        throw new Error("screenshotId is required when source is 'screenshot'");
+      }
+      const stored = this.screenshotStore.get(payload.screenshotId);
+      if (!stored) {
+        throw new Error(`Screenshot ${payload.screenshotId} not found. Take a screenshot first.`);
+      }
+      imageBuffer = stored;
+    } else {
+      if (!payload.filePath) {
+        throw new Error("filePath is required when source is 'file'");
+      }
+      imageBuffer = await readFile(payload.filePath);
+    }
+
+    // Create temp file
+    const tempPath = join(tmpdir(), payload.filename ?? "image.png");
+    await writeFile(tempPath, imageBuffer);
+
+    try {
+      // Find the file input element
+      const input = await page.$(payload.selector);
+      if (!input) {
+        throw new Error(`Element not found: ${payload.selector}`);
+      }
+
+      // Upload the file
+      const inputHandle = input as unknown as { uploadFile: (...paths: string[]) => Promise<void> };
+      await inputHandle.uploadFile(tempPath);
+
+      return { success: true, filename: payload.filename ?? "image.png" };
+    } finally {
+      // Clean up temp file
+      try {
+        await unlink(tempPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 
   // ==================== Helpers ====================

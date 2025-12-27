@@ -51,6 +51,26 @@ export const Actions = {
   // Profiles (2)
   SET_PROFILE: "set_profile",
   GET_PROFILE: "get_profile",
+
+  // GIF Recording (4)
+  GIF_START: "gif_start",
+  GIF_STOP: "gif_stop",
+  GIF_EXPORT: "gif_export",
+  GIF_CLEAR: "gif_clear",
+
+  // Tab Management (2)
+  TABS_CONTEXT: "tabs_context",
+  TABS_CREATE: "tabs_create",
+
+  // Shortcuts (2)
+  SHORTCUTS_LIST: "shortcuts_list",
+  SHORTCUTS_EXECUTE: "shortcuts_execute",
+
+  // Plan (1)
+  PLAN_UPDATE: "plan_update",
+
+  // Upload Image (1)
+  UPLOAD_IMAGE: "upload_image",
 } as const;
 
 export type Action = (typeof Actions)[keyof typeof Actions];
@@ -98,6 +118,21 @@ export const ActionSchema = z.enum([
   // Profiles
   Actions.SET_PROFILE,
   Actions.GET_PROFILE,
+  // GIF Recording
+  Actions.GIF_START,
+  Actions.GIF_STOP,
+  Actions.GIF_EXPORT,
+  Actions.GIF_CLEAR,
+  // Tab Management
+  Actions.TABS_CONTEXT,
+  Actions.TABS_CREATE,
+  // Shortcuts
+  Actions.SHORTCUTS_LIST,
+  Actions.SHORTCUTS_EXECUTE,
+  // Plan
+  Actions.PLAN_UPDATE,
+  // Upload Image
+  Actions.UPLOAD_IMAGE,
 ]);
 
 // Common schemas
@@ -347,6 +382,70 @@ export const PayloadSchemas = {
   }),
 
   [Actions.GET_PROFILE]: z.object({}),
+
+  // ==================== GIF Recording ====================
+  [Actions.GIF_START]: z.object({
+    captureOnAction: z.boolean().optional().default(true)
+      .describe("Auto-capture frame on each action (click, navigate, etc.)"),
+  }),
+
+  [Actions.GIF_STOP]: z.object({}),
+
+  [Actions.GIF_EXPORT]: z.object({
+    outputPath: z.string().optional()
+      .describe("Path to save GIF (returns base64 if not specified)"),
+    filename: z.string().optional().default("recording.gif"),
+    options: z.object({
+      showClickIndicators: z.boolean().optional().default(true),
+      showActionLabels: z.boolean().optional().default(true),
+      showProgressBar: z.boolean().optional().default(true),
+      quality: z.number().min(1).max(30).optional().default(10),
+      delay: z.number().optional().default(500)
+        .describe("Frame delay in ms"),
+    }).optional(),
+  }),
+
+  [Actions.GIF_CLEAR]: z.object({}),
+
+  // ==================== Tab Management ====================
+  [Actions.TABS_CONTEXT]: z.object({
+    includeMetadata: z.boolean().optional().default(true)
+      .describe("Include URL, title for each tab"),
+  }),
+
+  [Actions.TABS_CREATE]: z.object({
+    url: z.string().optional().describe("URL to open (blank if not specified)"),
+    active: z.boolean().optional().default(true)
+      .describe("Make the new tab active"),
+  }),
+
+  // ==================== Shortcuts ====================
+  [Actions.SHORTCUTS_LIST]: z.object({}),
+
+  [Actions.SHORTCUTS_EXECUTE]: z.object({
+    name: z.string().describe("Shortcut name to execute"),
+    args: z.record(z.unknown()).optional()
+      .describe("Arguments to pass to the shortcut"),
+  }),
+
+  // ==================== Plan ====================
+  [Actions.PLAN_UPDATE]: z.object({
+    domains: z.array(z.string())
+      .describe("Domains that will be visited"),
+    approach: z.array(z.string())
+      .describe("Steps describing the approach"),
+  }),
+
+  // ==================== Upload Image ====================
+  [Actions.UPLOAD_IMAGE]: z.object({
+    selector: z.string().describe("File input or drop zone selector"),
+    source: z.enum(["screenshot", "file"]).default("file"),
+    screenshotId: z.string().optional()
+      .describe("ID of previous screenshot (if source=screenshot)"),
+    filePath: z.string().optional()
+      .describe("Path to image file (if source=file)"),
+    filename: z.string().optional().default("image.png"),
+  }),
 } as const;
 
 // Infer types from schemas
@@ -384,6 +483,16 @@ export type HideBrowserPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.
 export type BrowserModePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.BROWSER_MODE]>;
 export type SetProfilePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.SET_PROFILE]>;
 export type GetProfilePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GET_PROFILE]>;
+export type GifStartPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GIF_START]>;
+export type GifStopPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GIF_STOP]>;
+export type GifExportPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GIF_EXPORT]>;
+export type GifClearPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.GIF_CLEAR]>;
+export type TabsContextPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.TABS_CONTEXT]>;
+export type TabsCreatePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.TABS_CREATE]>;
+export type ShortcutsListPayload = z.infer<(typeof PayloadSchemas)[typeof Actions.SHORTCUTS_LIST]>;
+export type ShortcutsExecutePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.SHORTCUTS_EXECUTE]>;
+export type PlanUpdatePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.PLAN_UPDATE]>;
+export type UploadImagePayload = z.infer<(typeof PayloadSchemas)[typeof Actions.UPLOAD_IMAGE]>;
 
 // Tool input schema
 export const ToolInputSchema = z.object({

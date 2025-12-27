@@ -8,6 +8,7 @@ import {
   type ToolInput,
 } from "./types.js";
 import { BrowserManager, BrowserClient } from "./browser/index.js";
+import { shortcutsManager } from "./shortcuts/manager.js";
 
 // Singleton browser manager
 let browserManager: BrowserManager | null = null;
@@ -228,7 +229,7 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
       }
 
       case Actions.BROWSER_MODE: {
-        const result = await client.browserMode();
+        const result = await client.browserMode(validatedPayload as Parameters<typeof client.browserMode>[0]);
         return success(result);
       }
 
@@ -240,6 +241,80 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 
       case Actions.GET_PROFILE: {
         const result = await client.getProfile();
+        return success(result);
+      }
+
+      // ==================== GIF Recording ====================
+      case Actions.GIF_START: {
+        const result = await client.gifStart(validatedPayload as Parameters<typeof client.gifStart>[0]);
+        return success(result);
+      }
+
+      case Actions.GIF_STOP: {
+        const result = await client.gifStop();
+        return success(result);
+      }
+
+      case Actions.GIF_EXPORT: {
+        const result = await client.gifExport(validatedPayload as Parameters<typeof client.gifExport>[0]);
+        return success(result);
+      }
+
+      case Actions.GIF_CLEAR: {
+        const result = await client.gifClear();
+        return success(result);
+      }
+
+      // ==================== Tab Management ====================
+      case Actions.TABS_CONTEXT: {
+        const result = await client.tabsContext(validatedPayload as Parameters<typeof client.tabsContext>[0]);
+        return success(result);
+      }
+
+      case Actions.TABS_CREATE: {
+        const result = await client.tabsCreate(validatedPayload as Parameters<typeof client.tabsCreate>[0]);
+        return success(result);
+      }
+
+      // ==================== Shortcuts ====================
+      case Actions.SHORTCUTS_LIST: {
+        const result = shortcutsManager.list();
+        return success({ shortcuts: result });
+      }
+
+      case Actions.SHORTCUTS_EXECUTE: {
+        const payload = validatedPayload as { name: string; args?: Record<string, unknown> };
+        const shortcut = shortcutsManager.get(payload.name);
+        if (!shortcut) {
+          return error(`Shortcut not found: ${payload.name}`);
+        }
+
+        // Execute each step in the shortcut
+        const results: unknown[] = [];
+        for (const step of shortcut.steps) {
+          const stepInput: ToolInput = {
+            action: step.action as ToolInput["action"],
+            payload: { ...step.payload, ...payload.args },
+          };
+          const stepResult = await dispatch(stepInput);
+          results.push(stepResult);
+          if (stepResult.isError) {
+            return error(`Shortcut step failed: ${step.action}`);
+          }
+        }
+
+        return success({ executed: shortcut.name, steps: shortcut.steps.length, results });
+      }
+
+      // ==================== Plan ====================
+      case Actions.PLAN_UPDATE: {
+        const result = await client.planUpdate(validatedPayload as Parameters<typeof client.planUpdate>[0]);
+        return success(result);
+      }
+
+      // ==================== Upload Image ====================
+      case Actions.UPLOAD_IMAGE: {
+        const result = await client.uploadImage(validatedPayload as Parameters<typeof client.uploadImage>[0]);
         return success(result);
       }
 

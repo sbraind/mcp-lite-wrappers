@@ -1,6 +1,6 @@
 {
   "name": "linear-lite-mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Lightweight MCP wrapper for Linear API - consolidates 23+ tools into 1",
   "type": "module",
   "main": "dist/index.js",

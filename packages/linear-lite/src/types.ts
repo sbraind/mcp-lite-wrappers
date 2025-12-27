@@ -121,7 +121,8 @@ export const PayloadSchemas = {
   // ==================== Issue Operations ====================
   [Actions.CREATE_ISSUE]: z.object({
     title: z.string().describe("Issue title"),
-    teamId: z.string().describe("Team ID to create issue in"),
+    teamId: z.string().optional().describe("Team ID (UUID) to create issue in"),
+    teamName: z.string().optional().describe("Team name or key (e.g., 'Batwise', 'ENG') - will be resolved to teamId"),
     description: z.string().optional().describe("Issue description (markdown supported)"),
     priority: PrioritySchema.describe("Priority level (0-4): 0=no priority, 1=urgent, 2=high, 3=medium, 4=low"),
     stateId: z.string().optional().describe("Workflow state ID"),
@@ -131,6 +132,8 @@ export const PayloadSchemas = {
     dueDate: z.string().optional().describe("Due date (ISO 8601 format)"),
     estimate: z.number().optional().describe("Issue estimate points"),
     parentId: z.string().optional().describe("Parent issue ID for sub-issues"),
+  }).refine(data => data.teamId || data.teamName, {
+    message: "Either 'teamId' or 'teamName' is required",
   }),
 
   [Actions.UPDATE_ISSUE]: z.object({
@@ -170,9 +173,12 @@ export const PayloadSchemas = {
   }),
 
   [Actions.GET_TEAM_ISSUES]: z.object({
-    teamId: z.string().describe("Team ID"),
+    teamId: z.string().optional().describe("Team ID (UUID)"),
+    teamName: z.string().optional().describe("Team name or key (e.g., 'Batwise') - will be resolved to teamId"),
     includeArchived: z.boolean().optional().describe("Include archived issues"),
     limit: z.number().optional().default(50).describe("Maximum number of issues to return"),
+  }).refine(data => data.teamId || data.teamName, {
+    message: "Either 'teamId' or 'teamName' is required",
   }),
 
   [Actions.GET_PROJECT_ISSUES]: z.object({
@@ -223,11 +229,14 @@ export const PayloadSchemas = {
   }),
 
   [Actions.CREATE_LABEL]: z.object({
-    teamId: z.string().describe("Team ID to create the label for"),
+    teamId: z.string().optional().describe("Team ID (UUID) to create the label for"),
+    teamName: z.string().optional().describe("Team name or key (e.g., 'Batwise') - will be resolved to teamId"),
     name: z.string().describe("Label name"),
     color: z.string().optional().describe("Label color in hex format (e.g., '#FF0000')"),
     description: z.string().optional().describe("Label description"),
     parentId: z.string().optional().describe("Parent label ID for nested labels"),
+  }).refine(data => data.teamId || data.teamName, {
+    message: "Either 'teamId' or 'teamName' is required",
   }),
 
   [Actions.UPDATE_LABEL]: z.object({
@@ -281,15 +290,21 @@ export const PayloadSchemas = {
 
   // ==================== Workflow States ====================
   [Actions.GET_WORKFLOW_STATES]: z.object({
-    teamId: z.string().describe("Team ID to get workflow states for"),
+    teamId: z.string().optional().describe("Team ID (UUID) to get workflow states for"),
+    teamName: z.string().optional().describe("Team name or key (e.g., 'Batwise') - will be resolved to teamId"),
     includeArchived: z.boolean().optional().describe("Include archived states"),
+  }).refine(data => data.teamId || data.teamName, {
+    message: "Either 'teamId' or 'teamName' is required",
   }),
 
   // ==================== Cycles ====================
   [Actions.GET_CYCLES]: z.object({
-    teamId: z.string().describe("Team ID to get cycles for"),
+    teamId: z.string().optional().describe("Team ID (UUID) to get cycles for"),
+    teamName: z.string().optional().describe("Team name or key (e.g., 'Batwise') - will be resolved to teamId"),
     includeArchived: z.boolean().optional().describe("Include archived/completed cycles"),
     limit: z.number().optional().default(50).describe("Maximum number of cycles to return"),
+  }).refine(data => data.teamId || data.teamName, {
+    message: "Either 'teamId' or 'teamName' is required",
   }),
 
   [Actions.GET_CYCLE]: z.object({
@@ -297,11 +312,14 @@ export const PayloadSchemas = {
   }),
 
   [Actions.CREATE_CYCLE]: z.object({
-    teamId: z.string().describe("Team ID to create the cycle for"),
+    teamId: z.string().optional().describe("Team ID (UUID) to create the cycle for"),
+    teamName: z.string().optional().describe("Team name or key (e.g., 'Batwise') - will be resolved to teamId"),
     name: z.string().optional().describe("Cycle name (optional, Linear auto-generates if not provided)"),
     startsAt: z.string().describe("Start date (ISO 8601 format, e.g., '2024-01-15')"),
     endsAt: z.string().describe("End date (ISO 8601 format, e.g., '2024-01-28')"),
     description: z.string().optional().describe("Cycle description"),
+  }).refine(data => data.teamId || data.teamName, {
+    message: "Either 'teamId' or 'teamName' is required",
   }),
 
   // ==================== Milestones ====================

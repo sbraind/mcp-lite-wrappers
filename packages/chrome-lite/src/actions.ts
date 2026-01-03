@@ -16,7 +16,9 @@ let browserClient: BrowserClient | null = null;
 
 function getBrowserClient(): BrowserClient {
   if (!browserManager) {
-    const headless = process.env.CHROME_HEADLESS !== "false";
+    // Default to visible browser (headless=false)
+    // Set CHROME_HEADLESS=true for CI/CD or server environments
+    const headless = process.env.CHROME_HEADLESS === "true";
     browserManager = new BrowserManager({ headless });
   }
   if (!browserClient) {

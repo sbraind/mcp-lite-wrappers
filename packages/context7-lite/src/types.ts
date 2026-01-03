@@ -20,6 +20,7 @@ export const ActionSchema = z.enum([
 export const PayloadSchemas = {
   [Actions.RESOLVE_LIBRARY_ID]: z.object({
     libraryName: z.string().describe("Name of the library to search for (e.g., 'react', 'next.js', 'typescript')"),
+    query: z.string().optional().describe("User's question or task - used to rank results by relevance (e.g., 'how to use hooks', 'routing setup')"),
   }),
 
   [Actions.GET_LIBRARY_DOCS]: z.object({

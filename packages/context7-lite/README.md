@@ -49,13 +49,15 @@ Search for libraries by name and get Context7-compatible library IDs.
 
 **Parameters:**
 - `libraryName` (required): Name of the library to search for
+- `query` (optional): User's question or task - used to rank results by relevance
 
 **Example:**
 ```json
 {
   "action": "resolve_library_id",
   "payload": {
-    "libraryName": "next.js"
+    "libraryName": "next.js",
+    "query": "how to setup routing"
   }
 }
 ```

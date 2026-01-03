@@ -41,8 +41,8 @@ async function dispatch(input: ToolInput): Promise<ToolResult> {
 
     switch (action) {
       case Actions.RESOLVE_LIBRARY_ID: {
-        const p = validatedPayload as { libraryName: string };
-        const result = await client.resolveLibraryId(p.libraryName);
+        const p = validatedPayload as { libraryName: string; query?: string };
+        const result = await client.resolveLibraryId(p.libraryName, p.query);
         return success({
           matches: result,
           message: result.length > 0

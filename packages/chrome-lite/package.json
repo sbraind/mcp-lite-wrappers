@@ -1,6 +1,6 @@
 {
   "name": "chrome-lite-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Lightweight MCP wrapper for Chrome DevTools - consolidates 44 tools into 1 (GIF recording, tabs, shortcuts, plan, upload)",
   "type": "module",
   "main": "dist/index.js",

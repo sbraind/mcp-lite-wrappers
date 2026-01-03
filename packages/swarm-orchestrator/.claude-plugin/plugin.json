@@ -1,0 +1,19 @@
+{
+  "name": "swarm-orchestrator",
+  "version": "0.1.0",
+  "description": "Multi-agent orchestration for parallel issue execution with Claude Code",
+  "author": {
+    "name": "sbraind9",
+    "email": "sebastianbrain@gmail.com"
+  },
+  "repository": "https://github.com/sbraind9/mcp-lite-wrappers",
+  "license": "MIT",
+  "keywords": [
+    "swarm",
+    "orchestrator",
+    "multi-agent",
+    "parallel-execution",
+    "linear",
+    "git-worktree"
+  ]
+}

@@ -96,12 +96,19 @@ export class Context7Client {
     return data as T;
   }
 
-  async resolveLibraryId(libraryName: string): Promise<LibraryMatch[]> {
+  async resolveLibraryId(libraryName: string, query?: string): Promise<LibraryMatch[]> {
     // The Context7 API endpoint for resolving library IDs
     // Based on the MCP implementation, this searches for libraries
+    // The query parameter helps rank results by relevance to user's task
+    const params: Record<string, string> = { q: libraryName };
+
+    if (query) {
+      params.query = query;
+    }
+
     const response = await this.request<{ results: LibraryMatch[] }>(
       "/v2/search",
-      { q: libraryName }
+      params
     );
 
     return response.results || [];

@@ -1,6 +1,6 @@
 {
   "name": "context7-lite-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lightweight MCP wrapper for Context7 API - consolidates 2 tools into 1",
   "type": "module",
   "main": "dist/index.js",

@@ -49,7 +49,8 @@ export class Context7Client {
 
   private async request<T>(
     endpoint: string,
-    params?: Record<string, string>
+    params?: Record<string, string>,
+    options?: { responseType?: 'json' | 'text' }
   ): Promise<T> {
     const url = new URL(`${this.apiUrl}${endpoint}`);
 
@@ -80,6 +81,12 @@ export class Context7Client {
         `API request failed: ${errorText}`,
         response.status
       );
+    }
+
+    // Handle text responses (like markdown docs)
+    if (options?.responseType === 'text') {
+      const text = await response.text();
+      return text as T;
     }
 
     const data = await response.json();
@@ -136,12 +143,20 @@ export class Context7Client {
       params.tokens = String(options.tokens);
     }
 
-    // The API endpoint format is /v2/docs/code/{libraryPath}
-    const response = await this.request<LibraryDocs>(
+    // The API returns markdown text, not JSON
+    const content = await this.request<string>(
       `/v2/docs/code/${libraryPath}`,
-      params
+      params,
+      { responseType: 'text' }
     );
 
-    return response;
+    return {
+      content,
+      library: {
+        id: context7CompatibleLibraryID,
+        name: libraryPath.split('/').pop() || libraryPath,
+      },
+      topic: options?.topic,
+    };
   }
 }
